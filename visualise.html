@@ -53,8 +53,11 @@
             user-select: none;
         }
         #legend-shallow, #legend-intermediate, #legend-deep {
-            color: #fff;
             padding: 0 5px;
+        }
+        #legend-shallow div, #legend-intermediate div, #legend-deep div {
+            padding: 8px;
+            background-size: 16px 16px;
         }
         #speed-display {
             color: #808080;
@@ -74,10 +77,10 @@
     </div>
     <div id="legend-mate">
         <span class="title">Legend:</span><br />
-        Bigger circles = bigger magnitude<br />
-        <div id="legend-shallow">red = shallow depth (less than <span></span>)</div>
-        <div id="legend-intermediate">blue = intermediate depth (less than <span></span>)</div>
-        <div id="legend-deep">green = deep depth</div>
+        Bigger guy = bigger magnitude<br />
+        <div id="legend-shallow"><div></div>^ this guy = shallow depth (less than <span></span>)</div>
+        <div id="legend-intermediate"><div></div>^ another guy = intermediate depth (less than <span></span>)</div>
+        <div id="legend-deep"><div></div>^ scary guy = deep depth</div>
     </div>
     <div id="map"></div>
 
@@ -94,9 +97,9 @@
 
             $("#legend-shallow span").text(maxDepthShallow);
             $("#legend-intermediate span").text(maxDepthIntermediate);
-            $("#legend-shallow").css('background-color', colourShallow);
-            $("#legend-intermediate").css('background-color', colourIntermediate);
-            $("#legend-deep").css('background-color', colourDeep);
+            $("#legend-shallow div").css('background-image', `url(${imageShallow})`);
+            $("#legend-intermediate div").css('background-image', `url(${imageIntermediate})`);
+            $("#legend-deep div").css('background-image', `url(${imageDeep})`);
             $("#speed-value").text(tickSpeed);
         });
 
@@ -110,9 +113,11 @@
         var speedIncrement = 30;
         var status = "running";
         var nextTickTimout;
-        var colourShallow = "#f44242";
-        var colourIntermediate = "#414ff4";
-        var colourDeep = "#56c633";
+        var imageShallow = "images/de08.gif";
+        var imageIntermediate = "images/de07.gif";
+        var imageDeep = "images/de11.gif";
+        var imageSize = new google.maps.Size(128, 128);
+        var imageAnchor = new google.maps.Point(64, 64);
         var maxDepthShallow = 30;
         var maxDepthIntermediate = 70;
 
@@ -269,25 +274,28 @@
                         var outputDetails = outputMag.padEnd(25, ' ') + outputDepth.padEnd(25, ' ');
                         console.log(outputDetails);
                         
-                        var colour;
+                        var image;
                         if (currentEvents[i].depth <= maxDepthShallow) {
-                            colour = colourShallow;
+                            image = imageShallow;
                         } else if (currentEvents[i].depth <= maxDepthIntermediate) {
-                            colour = colourIntermediate;
+                            image = imageIntermediate;
                         } else {
-                            colour = colourDeep;
+                            image = imageDeep;
                         }
 
-                        // draw a circle for this event
-                        var marker = new google.maps.Circle({
-                            strokeColor: colour,
-                            strokeOpacity: 1,
-                            strokeWeight: 2,
-                            fillColor: colour,
-                            fillOpacity: 1,
+                        // var icon = image;
+                        var icon = {
+                            image: image,
+                            url: image,
+                            scaledSize: imageSize,
+                            anchor: imageAnchor
+                        };
+
+                        // draw a "circle" for this event
+                        var marker = new google.maps.Marker({
                             map: map,
-                            center: new google.maps.LatLng(currentEvents[i].lat, currentEvents[i].lng),
-                            radius: 10000
+                            position: currentEvents[i],
+                            icon: icon
                         });
                         marker.magnitude = currentEvents[i].magnitude;
                         // trigger the animation for the marker
@@ -304,19 +312,20 @@
         }
 
         function FadeMe(marker) {
-            var fillOpacity = marker.get("fillOpacity");
-            fillOpacity -= 0.02;
-            if (fillOpacity < 0) fillOpacity = 0.0;
-            var strokeOpacity = marker.get("strokeOpacity");
-            strokeOpacity -= 0.05;
-            if (strokeOpacity < 0) strokeOpacity = 0.0;
+            var opacity = marker.getOpacity() || 1;
+            opacity -= 0.02;
+            if (opacity < 0) opacity = 0.0;
 
             var radius = marker.get("radius");
             var incrememt = marker.magnitude * 1000;
             radius += incrememt;
-            marker.setOptions({ fillOpacity: fillOpacity, strokeOpacity: strokeOpacity, radius: radius });
+            // marker.setOptions({ opacity: opacity, strokeOpacity: strokeOpacity, radius: radius });
+            marker.setOpacity(opacity)
 
-            if (strokeOpacity === 0 && fillOpacity === 0) return;
+            if (opacity === 0) {
+                marker.setMap(null);
+                return;
+            }
 
             setTimeout(function () { FadeMe(marker); }, fadeTimeout);
         }
